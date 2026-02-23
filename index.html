@@ -111,8 +111,29 @@
     const today = new Date().toISOString().slice(0,10);
     todayEl.textContent = "Today: " + new Date().toDateString();
 
-    let isOffDay = confirm("Is today an off day?");
+    // Week tracking
+    const WEEK_KEY = 'recovery-week-start';
+    const TODAY_KEY = 'recovery-today-status';
 
+    if(!localStorage.getItem(WEEK_KEY)) {
+        localStorage.setItem(WEEK_KEY, today);
+    } else {
+        const start = new Date(localStorage.getItem(WEEK_KEY));
+        const diffDays = Math.floor((new Date(today) - start)/(1000*60*60*24));
+        if(diffDays >= 7){
+            localStorage.clear();
+            localStorage.setItem(WEEK_KEY, today);
+        }
+    }
+
+    // Ask user first time of day
+    let todayStatus = localStorage.getItem(TODAY_KEY);
+    if(!todayStatus){
+        todayStatus = confirm("Is today an off day?") ? 'off' : 'work';
+        localStorage.setItem(TODAY_KEY, todayStatus);
+    }
+
+    // Define routines
     const routines = {
       workDay: [
         {title: '🌅 Morning (6:00–6:50)', items: ['6:00 Wake up','6:05 Light exposure','6:15 Mobility','6:25 Fixed prep','6:50 Leave home']},
@@ -129,8 +150,9 @@
       ]
     };
 
-    const selectedRoutine = isOffDay ? routines.offDay : routines.workDay;
+    const selectedRoutine = todayStatus === 'off' ? routines.offDay : routines.workDay;
 
+    // Render sections
     selectedRoutine.forEach(section => {
       const sec = document.createElement('section');
       const h2 = document.createElement('h2');
@@ -141,10 +163,11 @@
         const li = document.createElement('li');
         const cb = document.createElement('input');
         cb.type = 'checkbox';
-        const saved = localStorage.getItem(today + '_cb_' + section.title + '_' + i);
+        const key = today + '_cb_' + section.title + '_' + i;
+        const saved = localStorage.getItem(key);
         if(saved === 'true') cb.checked = true;
         cb.addEventListener('change',()=>{
-          localStorage.setItem(today + '_cb_' + section.title + '_' + i, cb.checked);
+          localStorage.setItem(key, cb.checked);
         });
         li.appendChild(cb);
         li.appendChild(document.createTextNode(item));
@@ -155,7 +178,8 @@
       resetBtn.textContent = 'Reset Today';
       resetBtn.addEventListener('click',()=>{
         section.items.forEach((_,i)=>{
-          localStorage.setItem(today + '_cb_' + section.title + '_' + i,false);
+          const key = today + '_cb_' + section.title + '_' + i;
+          localStorage.setItem(key,false);
           const cb = ul.children[i].querySelector('input');
           if(cb) cb.checked = false;
         });
