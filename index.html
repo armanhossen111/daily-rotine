@@ -91,75 +91,14 @@
     }
     button:active { transform: scale(0.98); }
   </style>
-  <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#0f172a" />
 </head>
 <body>
   <header>
-    <h1>🧠 My Daily Recovery Checklist</h1>
-    <p>Private. Simple. Built for long shifts.</p>
+    <h1>🧠 My Daily Recovery</h1>
+    <p id="today">Loading date…</p>
   </header>
 
-  <main>
-    <section>
-      <section>
-      <h2>🌅 Morning (6:00–6:50)</h2>
-      <ul>
-        <li><input type="checkbox">6:00 Wake up</li>
-        <li><input type="checkbox">6:05 Light exposure</li>
-        <li><input type="checkbox">6:15 Mobility</li>
-        <li><input type="checkbox">6:25 Fixed prep</li>
-        <li><input type="checkbox">6:50 Leave home</li>
-      </ul>
-    </section>
-
-    <section>
-      <h2>🏭 Work Shift</h2>
-      <ul>
-        <li><input type="checkbox">One task per hour</li>
-        <li><input type="checkbox">Fixed break timing</li>
-        <li><input type="checkbox">20-8-2 posture rule</li>
-        <li><input type="checkbox">Eye reset done</li>
-      </ul>
-    </section>
-
-    <section>
-      <h2>🧍 Body Care</h2>
-      <ul>
-        <li><input type="checkbox">Standing stretches done</li>
-        <li><input type="checkbox">Sitting stretches done</li>
-      </ul>
-    </section>
-
-    <section>
-      <h2>🌇 Post-Shift Transition</h2>
-      <ul>
-        <li><input type="checkbox">Changed clothes</li>
-        <li><input type="checkbox">Cool face wash</li>
-        <li><input type="checkbox">No phone (20 min)</li>
-      </ul>
-    </section>
-
-    <section>
-      <h2>🎮 Dopamine Control</h2>
-      <ul>
-        <li><input type="checkbox">1 activity only</li>
-        <li><input type="checkbox">Timer set (1 hour)</li>
-        <li><input type="checkbox">Stopped by 9:30 PM</li>
-      </ul>
-    </section>
-
-    <section>
-      <h2>🌙 Sleep Wind-Down</h2>
-      <ul>
-        <li><input type="checkbox">Lights dimmed</li>
-        <li><input type="checkbox">Blue light filter ON</li>
-        <li><input type="checkbox">Stretching done</li>
-        <li><input type="checkbox">Phone away from bed</li>
-      </ul>
-      <p class="muted danger">If sleep feels wired → reduce stimulation tomorrow.</p>
-      <button id="reset">Reset for Tomorrow</button>
-    </section>
+  <main id="main-content">
   </main>
 
   <footer>
@@ -167,30 +106,63 @@
   </footer>
 
   <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js');
-    }
+    const mainContent = document.getElementById('main-content');
+    const todayEl = document.getElementById('today');
+    const today = new Date().toISOString().slice(0,10);
+    todayEl.textContent = "Today: " + new Date().toDateString();
 
-    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-    const resetBtn = document.getElementById('reset');
+    let isOffDay = confirm("Is today an off day?");
 
-    // Load saved state
-    checkboxes.forEach((box, i) => {
-      const saved = localStorage.getItem('cb_' + i);
-      if (saved === 'true') box.checked = true;
+    const routines = {
+      workDay: [
+        {title: '🌅 Morning (6:00–6:50)', items: ['6:00 Wake up','6:05 Light exposure','6:15 Mobility','6:25 Fixed prep','6:50 Leave home']},
+        {title: '🏭 Work Shift', items: ['7:00–9:30 Focus block','9:30 Micro-break','9:35–11:30 Design block','1:00 Reset','4:00 Fatigue break','6:30 Low-decision only']},
+        {title: '🌇 Transition', items: ['7:00–7:20 Change clothes','Cool face wash','No phone']},
+        {title: '🎮 Dopamine Window', items: ['8:30–9:30 PUBG / Social','Timer ON','Hard stop 9:30']},
+        {title: '🌙 Sleep Wind-down', items: ['9:30–9:45 Dim lights','9:45–10:00 Stretch + breathing','10:00–10:30 Bed ritual','10:30 Sleep']}
+      ],
+      offDay: [
+        {title: '🌅 Morning Off', items: ['7:00 Wake up','7:05 Light exposure','7:15 Stretch','7:25 Personal prep']},
+        {title: '🧘 Relax / Hobby', items: ['Read / walk / meditate','Light exercise']},
+        {title: '🎮 Leisure', items: ['PUBG / Social for 1 hour','Optional hobby']},
+        {title: '🌙 Sleep Wind-down', items: ['21:00–21:15 Dim lights','21:15–21:30 Stretch + breathing','22:00 Sleep']}
+      ]
+    };
 
-      box.addEventListener('change', () => {
-        localStorage.setItem('cb_' + i, box.checked);
+    const selectedRoutine = isOffDay ? routines.offDay : routines.workDay;
+
+    selectedRoutine.forEach(section => {
+      const sec = document.createElement('section');
+      const h2 = document.createElement('h2');
+      h2.textContent = section.title;
+      sec.appendChild(h2);
+      const ul = document.createElement('ul');
+      section.items.forEach((item,i)=>{
+        const li = document.createElement('li');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        const saved = localStorage.getItem(today + '_cb_' + section.title + '_' + i);
+        if(saved === 'true') cb.checked = true;
+        cb.addEventListener('change',()=>{
+          localStorage.setItem(today + '_cb_' + section.title + '_' + i, cb.checked);
+        });
+        li.appendChild(cb);
+        li.appendChild(document.createTextNode(item));
+        ul.appendChild(li);
       });
-    });
-
-    resetBtn.addEventListener('click', () => {
-      checkboxes.forEach((box, i) => {
-        box.checked = false;
-        localStorage.setItem('cb_' + i, false);
+      sec.appendChild(ul);
+      const resetBtn = document.createElement('button');
+      resetBtn.textContent = 'Reset Today';
+      resetBtn.addEventListener('click',()=>{
+        section.items.forEach((_,i)=>{
+          localStorage.setItem(today + '_cb_' + section.title + '_' + i,false);
+          const cb = ul.children[i].querySelector('input');
+          if(cb) cb.checked = false;
+        });
       });
+      sec.appendChild(resetBtn);
+      mainContent.appendChild(sec);
     });
   </script>
 </body>
 </html>
-
